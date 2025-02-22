@@ -1,20 +1,102 @@
-- name : Configure Docker on EC2 Instances
-  hosts : all
-  become: true
-  connection : ssh
-  tasks : 
-  - name: updating apt
-    command : sudo apt-get update
+---
+- name: Install Java, Git, Maven, and Docker on Ubuntu
+  hosts: all
+  become: yes
+  tasks:
 
-  - name : Install Docker
-    command : sudo apt-get install -y docker.io
-    become : yes
-    become_user : root
+    # Update apt cache to ensure package lists are up-to-date
+    - name: Update apt cache
+      apt:
+        update_cache: yes
 
-  - name : Start Docker Service
-    command : sudo systemctl start docker
-    become : yes
-    become_user : root
+    # Install OpenJDK 17
+    - name: Install OpenJDK 17
+      apt:
+        name: openjdk-17-jdk
+        state: present
 
-  - name: Deploy Docker Container
-    command: docker run -itd -p 8084:8082 shubhamkushwah123/medicure:1.0
+    # Install Git
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    # Install Maven
+    - name: Install Maven
+      apt:
+        name: maven
+        state: present
+
+    # Install Docker dependencies
+    - name: Install Docker prerequisites
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+
+    # Add Docker GPG key
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # Add Docker repository to the apt sources list
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable
+        state: present
+
+    # Update apt cache after adding Docker repository
+    - name: Update apt cache after Docker repository added
+      apt:
+        update_cache: yes
+
+    # Install Docker
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+
+    # Ensure Docker service is started and enabled
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    # Verify Java version
+    - name: Verify Java installation
+      command: java -version
+      register: java_version
+      failed_when: java_version.rc != 0
+
+    # Verify Git version
+    - name: Verify Git installation
+      command: git --version
+      register: git_version
+      failed_when: git_version.rc != 0
+
+    # Verify Maven version
+    - name: Verify Maven installation
+      command: mvn -version
+      register: maven_version
+      failed_when: maven_version.rc != 0
+
+    # Verify Docker version
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_version
+      failed_when: docker_version.rc != 0
+
+    # Output verification results
+    - name: Display installation verification results
+      debug:
+        msg: |
+          Java Version: {{ java_version.stdout }}
+          Git Version: {{ git_version.stdout }}
+          Maven Version: {{ maven_version.stdout }}
+          Docker Version: {{ docker_version.stdout }}
+
